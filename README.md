@@ -139,6 +139,20 @@ mybatis如何映射表结构
 
 <pre>
 static加锁
+
+      synchronized与static synchronized 的区别
+     
+          synchronized是对类的当前实例进行加锁，防止其他线程同时访问该类的该实例的所有
+          synchronized块，注意这里是“ 类的当前实例 ”，类的两个不同实例就没有这种约束
+          了。
+
+          那么static synchronized恰好就是要控制类的所有实例的访问了，static 
+          synchronized是限制线程同时访问jvm中该类的所有实例同时访问对应的代码块。实际
+          上，在类中某方法或某代码块中有 synchronized，那么在生成一个该类实例后，该类
+          也就有一个监视块，放置线程并发访问该实例synchronized保护块， 而 static 
+          synchronized 则是所有该类的实例公用一个监视块了 ，也就是两个的区别了,也就是
+          synchronized相当于this.synchronized，而staticsynchronized相当于
+          Something.synchronized.
 </pre>
 
 <pre>
@@ -155,10 +169,29 @@ hashmap如果只有一个写其他全读会出什么问题
 
 <pre>
 如何手动触发全量回收垃圾，如何立即触发垃圾回收
+
+      强制触发垃圾回收方法
+          1) 调用System类的gc()静态方法：System.gc();
+          2) 调用Runtime对象的gc()实例方法：Runtime.getRuntime().gc();
 </pre>
 
 <pre>
 ConcurrentHashmap的锁是如何加的？是不是分段越多越好
+
+      ConcurrentHashMap是由Segment数组结构和HashEntry数组结构组成。Segment是一种可重
+      入锁ReentrantLock，在ConcurrentHashMap里扮演锁的角色，HashEntry则用于存储键值
+      对数据。一个ConcurrentHashMap里包含一个Segment数组，Segment的结构和HashMap类
+      似，是一种数组和链表结构， 一个Segment里包含一个HashEntry数组，每个HashEntry是
+      一个链表结构的元素， 每个Segment守护者一个HashEntry数组里的元素,当对HashEntry数
+      组的数据进行修改时，必须首先获得它对应的Segment锁。
+
+      并不是分段越多越好:
+          有些方法需要跨段，比如size()和containsValue()，它们可能需要锁定整个表而而
+      不仅仅是某个段，这需要按顺序锁定所有段，操作完毕后，又按顺序释放所有段的锁。这里“按
+      顺序”是很重要的，否则极有可能出现死锁，在ConcurrentHashMap内部，段数组是final
+      的，并且其成员变量实际上也是final的，但是，仅仅是将数组声明为final的并不保证数组
+      成员也是final的，这需要实现上的保证。这可以确保不会出现死锁，因为获得锁的顺序是固定
+      的。
 </pre>
 
 <pre>
@@ -168,6 +201,10 @@ mysql的行级锁加在哪个位置
 <pre>
 遍历hashmap的三种方式
 </pre>
+
+![](https://i.imgur.com/VhNI4yo.png)
+
+![](https://i.imgur.com/7kFMoWw.png)
 
 <pre>
 定时器用什么做的
@@ -197,6 +234,14 @@ aop的底层实现，动态代理是如何动态，假如有100个对象，如�
 一万个人抢100个红包，如何实现（不用队列），如何保证2个人不能抢到同一个红包，可用分布式锁
 </pre>
 
+![](https://i.imgur.com/mutHYAJ.png)
+
+![](https://i.imgur.com/Ashw3kj.png)
+
+<pre>
+Java抢红包算法
+</pre>
+
 <pre>
 线程的阻塞的方式
 </pre>
@@ -204,6 +249,14 @@ aop的底层实现，动态代理是如何动态，假如有100个对象，如�
 <pre>
 用hashmap实现redis有什么问题（死锁，死循环，可用ConcurrentHashmap）
 </pre>
+
+![](https://i.imgur.com/79z7L3r.png)
+
+![](https://i.imgur.com/6MqWLs7.png)
+
+![](https://i.imgur.com/jCY9G8L.png)
+
+![](https://i.imgur.com/U12dn6j.png)
 
 <pre>
 nginx的请求转发算法，如何配置根据权重转发
@@ -664,5 +717,92 @@ JVM中最大堆大小有没有限制
               将lease颁发给其他节点,造成承诺失效,影响系统的正确性。对于这种时钟不同步,
               实践中的通常做法是将颁发者的有效期设置得比接收者的略大,只需大过时钟误差就
               可以避免对lease的有效性的影响。
+</pre>
+
+<pre>
+JDBC编程有哪些不足之处，Mybatis是如何解决这些问题的
+      1）数据库链接创建、释放频繁造成系统资源浪费从而影响系统性能，如果使用数据库链接池可
+         解决此问题。
+         解决：在SqlMapConfig.xml中配置数据链接池，使用连接池管理数据库链接。
+      2）Sql语句写在代码中造成代码不易维护，实际应用sql变化的可能较大，sql变动需要改变
+         java代码。
+         解决：将Sql语句配置在XXXXmapper.xml文件中与java代码分离。
+      3）向sql语句传参数麻烦，因为sql语句的where条件不一定，可能多也可能少，占位符需
+         要和参数一一对应。
+         解决： Mybatis自动将java对象映射至sql语句。
+      5）对结果集解析麻烦，sql变化导致解析代码变化，且解析前需要遍历，如果能将数据库记
+         录封装成pojo对象解析比较方便。
+         解决：Mybatis自动将sql执行结果映射至java对象。
+</pre>
+
+<pre>
+MyBatis编程步骤是什么样的？
+
+     ① 创建SqlSessionFactory
+     ② 通过SqlSessionFactory创建SqlSession
+     ③ 通过sqlsession执行数据库操作
+</pre>
+
+<pre>
+使用MyBatis的mapper接口调用时有哪些要求？
+
+     ① Mapper接口方法名和mapper.xml中定义的每个sql的id相同
+
+     ② Mapper接口方法的输入参数类型和mapper.xml中定义的每个sql 的parameterType的类型相同
+
+     ③ Mapper接口方法的输出参数类型和mapper.xml中定义的每个sql的resultType的类型相同
+
+     ④ Mapper.xml文件中的namespace即是mapper接口的类路径。
+</pre>
+
+<pre>
+简单的说一下MyBatis的一级缓存和二级缓存？
+
+     Mybatis首先去缓存中查询结果集，如果没有则查询数据库，如果有则从缓存取出返回结果集
+     就不走数据库。Mybatis内部存储缓存使用一个HashMap，key为hashCode+sqlId+Sql语句。
+     value为从查询出来映射生成的java对象
+
+     Mybatis的二级缓存即查询缓存，它的作用域是一个mapper的namespace，即在同一个
+     namespace中查询sql可以从缓存中获取数据。二级缓存是可以跨SqlSession的。
+</pre>
+
+![](https://i.imgur.com/5chRUHF.jpg)
+
+<pre>
+MyBatis架构:
+
+      Configuration
+          MyBatis所有的配置信息都保存在Configuration对象之中，配置文件中的大部分配置
+          都会存储到该类中
+      SqlSession 
+          作为MyBatis工作的主要顶层API，表示和数据库交互时的会话，完成必要数据库增删改查功能
+      Executor 
+          MyBatis执行器，是MyBatis 调度的核心，负责SQL语句的生成和查询缓存的维护
+      StatementHandler
+          封装了JDBC Statement操作，负责对JDBC statement 的操作，如设置参数等
+      ParameterHandler
+          负责对用户传递的参数转换成JDBC Statement 所对应的数据类型
+      ResultSetHandler
+          负责将JDBC返回的ResultSet结果集对象转换成List类型的集合
+      TypeHandler
+          负责java数据类型和jdbc数据类型(也可以说是数据表列类型)之间的映射和转换
+      MappedStatement
+          MappedStatement维护一条<select|update|delete|insert>节点的封装
+      SqlSource 
+          负责根据用户传递的parameterObject，动态地生成SQL语句，将信息封装到
+          BoundSql对象中，并返回
+      BoundSql
+          表示动态生成的SQL语句以及相应的参数信息
+</pre>
+
+<pre>
+#{} ${}
+
+      但是 #{} 和 ${} 在预编译中的处理是不一样的。#{} 在预处理时，会把参数部分用一个占位符 ? 代替，变成如下的 sql 语句：
+                    select * from user where name = ?;
+      而 ${} 则只是简单的字符串替换，在动态解析阶段，该 sql 语句会被解析成
+                    select * from user where name = 'zhangsan';
+
+      以上，#{} 的参数替换是发生在 DBMS 中，而 ${} 则发生在动态解析过程中。
 </pre>
 
