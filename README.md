@@ -210,8 +210,20 @@ mysql的行级锁加在哪个位置
 定时器用什么做的
 </pre>
 
+![](https://i.imgur.com/2X02mb8.png)
+
+![](https://i.imgur.com/gnonM4h.png)
+
 <pre>
 用过spring的线程池还是java的线程池？
+
+      SpringFrameWork 的 ThreadPoolTaskExecutor 是辅助 JDK 的 ThreadPoolExecutor 的工具类，它将属性通过 
+      JavaBeans 的命名规则提供出来，方便进行配置
+
+      Spring线程池：
+                  ThreadPoolTaskExecutor 
+      Java线程池：
+                  ThreadPoolExecutor 
 </pre>
 
 <pre>
